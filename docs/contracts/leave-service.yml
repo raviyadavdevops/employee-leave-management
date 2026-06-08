@@ -1,0 +1,625 @@
+openapi: 3.0.3
+info:
+  title: Leave Service API
+  description: Leave request management, balance tracking, and approval workflows
+  version: 1.0.0
+  contact:
+    name: Leave Management Team
+
+servers:
+  - url: http://localhost/api/v1/leaves
+    description: Development server (via NGINX)
+  - url: http://leave-service:8003/api/v1/leaves
+    description: Direct service access
+
+tags:
+  - name: Balances
+    description: Leave balance operations
+  - name: Requests
+    description: Leave request operations
+  - name: Approvals
+    description: Manager approval operations
+  - name: Health
+    description: Service health checks
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns service health status
+      operationId: healthCheck
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /balances/me:
+    get:
+      summary: Get my leave balances
+      description: Returns authenticated employee's leave balances for current year
+      operationId: getMyBalances
+      tags:
+        - Balances
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+            example: 2026
+          description: Year for balance (defaults to current year)
+      responses:
+        '200':
+          description: Balances retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveBalanceResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /balances/{employee_id}:
+    get:
+      summary: Get employee leave balances
+      description: Returns leave balances for specified employee (manager can view team members)
+      operationId: getEmployeeBalances
+      tags:
+        - Balances
+      parameters:
+        - name: employee_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: year
+          in: query
+          schema:
+            type: integer
+            example: 2026
+      responses:
+        '200':
+          description: Balances retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balances:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveBalanceResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /requests:
+    post:
+      summary: Submit leave request
+      description: Employee submits a new leave request
+      operationId: submitLeaveRequest
+      tags:
+        - Requests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLeaveRequestRequest'
+      responses:
+        '201':
+          description: Leave request submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    get:
+      summary: Get my leave requests
+      description: Returns authenticated employee's leave requests
+      operationId: getMyLeaveRequests
+      tags:
+        - Requests
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+          description: Filter by request status
+        - name: year
+          in: query
+          schema:
+            type: integer
+            example: 2026
+          description: Filter by year
+      responses:
+        '200':
+          description: Leave requests retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveRequestResponse'
+                  total:
+                    type: integer
+                    example: 5
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /requests/{request_id}:
+    get:
+      summary: Get leave request details
+      description: Returns leave request details (employee can view own, manager can view team)
+      operationId: getLeaveRequestById
+      tags:
+        - Requests
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Leave request retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /requests/team:
+    get:
+      summary: Get team leave requests
+      description: Manager views pending leave requests from team members
+      operationId: getTeamLeaveRequests
+      tags:
+        - Approvals
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+          description: Filter by status (defaults to pending)
+      responses:
+        '200':
+          description: Team leave requests retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaveRequestResponse'
+                  total:
+                    type: integer
+                    example: 3
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /requests/{request_id}/approve:
+    post:
+      summary: Approve leave request
+      description: Manager approves a pending leave request
+      operationId: approveLeaveRequest
+      tags:
+        - Approvals
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
+      responses:
+        '200':
+          description: Leave request approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /requests/{request_id}/reject:
+    post:
+      summary: Reject leave request
+      description: Manager rejects a pending leave request
+      operationId: rejectLeaveRequest
+      tags:
+        - Approvals
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectionRequest'
+      responses:
+        '200':
+          description: Leave request rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /calendar/team:
+    get:
+      summary: Get team leave calendar
+      description: Manager views approved leave for team with coverage gap warnings
+      operationId: getTeamCalendar
+      tags:
+        - Approvals
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: 2026-06-01
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: 2026-06-30
+      responses:
+        '200':
+          description: Team calendar retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calendar:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalendarEntry'
+                  coverage_warnings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date:
+                          type: string
+                          format: date
+                          example: 2026-06-15
+                        employees_on_leave:
+                          type: integer
+                          example: 3
+                        warning:
+                          type: string
+                          example: Multiple team members on leave - potential coverage gap
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    UnauthorizedError:
+      description: Unauthorized - Invalid or missing token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ForbiddenError:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequestError:
+      description: Bad request - Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    CreateLeaveRequestRequest:
+      type: object
+      required:
+        - leave_type
+        - start_date
+        - end_date
+      properties:
+        leave_type:
+          type: string
+          enum: [annual, sick, personal]
+          example: annual
+        start_date:
+          type: string
+          format: date
+          example: 2026-07-01
+        end_date:
+          type: string
+          format: date
+          example: 2026-07-05
+        comments:
+          type: string
+          nullable: true
+          maxLength: 500
+          example: Family vacation
+
+    ApprovalRequest:
+      type: object
+      properties:
+        comments:
+          type: string
+          nullable: true
+          maxLength: 500
+          example: Approved - enjoy your vacation!
+
+    RejectionRequest:
+      type: object
+      required:
+        - comments
+      properties:
+        comments:
+          type: string
+          minLength: 1
+          maxLength: 500
+          example: Unable to approve due to team coverage requirements
+
+    LeaveBalanceResponse:
+      type: object
+      required:
+        - leave_type
+        - year
+        - available
+        - provisional
+        - consumed
+      properties:
+        leave_type:
+          type: string
+          example: annual
+        leave_type_display:
+          type: string
+          example: Annual Leave
+        year:
+          type: integer
+          example: 2026
+        available:
+          type: number
+          format: decimal
+          example: 15.5
+        provisional:
+          type: number
+          format: decimal
+          example: 3.0
+        consumed:
+          type: number
+          format: decimal
+          example: 1.5
+        total_allocated:
+          type: number
+          format: decimal
+          example: 20.0
+
+    LeaveRequestResponse:
+      type: object
+      required:
+        - id
+        - employee_id
+        - leave_type
+        - start_date
+        - end_date
+        - days_count
+        - status
+        - submitted_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 770e8400-e29b-41d4-a716-446655440000
+        employee_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        employee_name:
+          type: string
+          example: John Doe
+        leave_type:
+          type: string
+          enum: [annual, sick, personal]
+          example: annual
+        leave_type_display:
+          type: string
+          example: Annual Leave
+        start_date:
+          type: string
+          format: date
+          example: 2026-07-01
+        end_date:
+          type: string
+          format: date
+          example: 2026-07-05
+        days_count:
+          type: number
+          format: decimal
+          example: 5.0
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+          example: pending
+        comments:
+          type: string
+          nullable: true
+          example: Family vacation
+        manager_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: 660e8400-e29b-41d4-a716-446655440000
+        manager_comments:
+          type: string
+          nullable: true
+          example: Approved
+        submitted_at:
+          type: string
+          format: date-time
+          example: 2026-06-01T10:00:00Z
+        processed_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-06-02T15:30:00Z
+
+    CalendarEntry:
+      type: object
+      required:
+        - employee_id
+        - employee_name
+        - leave_type
+        - start_date
+        - end_date
+      properties:
+        employee_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        employee_name:
+          type: string
+          example: John Doe
+        leave_type:
+          type: string
+          example: annual
+        start_date:
+          type: string
+          format: date
+          example: 2026-06-15
+        end_date:
+          type: string
+          format: date
+          example: 2026-06-20
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [up, degraded, down]
+          example: up
+        service:
+          type: string
+          example: leave-service
+        version:
+          type: string
+          example: 1.0.0
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-06-03T10:00:00Z
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [up, down]
+              example: up
+            rabbitmq:
+              type: string
+              enum: [up, down]
+              example: up
+        uptime_seconds:
+          type: number
+          example: 3600.5
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: INSUFFICIENT_LEAVE_BALANCE
+        message:
+          type: string
+          example: Requested leave exceeds available balance
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+          example:
+            available: 10.0
+            requested: 15.0

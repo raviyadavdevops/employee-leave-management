@@ -1,0 +1,512 @@
+{
+  "info": {
+    "_postman_id": "f4eae4d4-0a0b-4d31-9c89-3a6f6af9f201",
+    "name": "Employee Leave Management - Demo Flow",
+    "description": "Postman collection derived from demo.md.\n\nPrerequisite: create manager and employee auth users in auth.users as documented in demo.md before running login requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "elmApiBaseUrl", "value": "http://127.0.0.1:8080" },
+    { "key": "elmManagerEmail", "value": "manager.demo@company.com" },
+    { "key": "elmManagerPassword", "value": "Manager@123" },
+    { "key": "elmEmployeeEmail", "value": "employee.demo@company.com" },
+    { "key": "elmEmployeePassword", "value": "Employee@123" },
+    { "key": "elmManagerToken", "value": "" },
+    { "key": "elmManagerRefreshToken", "value": "" },
+    { "key": "elmEmployeeToken", "value": "" },
+    { "key": "elmEmployeeRefreshToken", "value": "" },
+    { "key": "elmManagerId", "value": "" },
+    { "key": "elmEmployeeId", "value": "" },
+    { "key": "elmRequestId", "value": "" },
+    { "key": "elmRequestId2", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 Health",
+      "item": [
+        {
+          "name": "Gateway Root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{elmApiBaseUrl}}/"
+          }
+        },
+        {
+          "name": "Auth Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/health"
+          }
+        },
+        {
+          "name": "Users Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{elmApiBaseUrl}}/api/v1/users/health"
+          }
+        },
+        {
+          "name": "Leaves Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{elmApiBaseUrl}}/api/v1/leaves/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Auth",
+      "item": [
+        {
+          "name": "Login Manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('elmManagerToken', j.access_token || '');",
+                  "pm.collectionVariables.set('elmManagerRefreshToken', j.refresh_token || '');",
+                  "if (j.user && j.user.id) {",
+                  "  pm.collectionVariables.set('elmManagerId', j.user.id);",
+                  "} else if (j.access_token) {",
+                  "  try {",
+                  "    const payload = JSON.parse(atob(j.access_token.split('.')[1]));",
+                  "    if (payload.sub) pm.collectionVariables.set('elmManagerId', payload.sub);",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{elmManagerEmail}}\",\n  \"password\": \"{{elmManagerPassword}}\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Login Employee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.collectionVariables.set('elmEmployeeToken', j.access_token || '');",
+                  "pm.collectionVariables.set('elmEmployeeRefreshToken', j.refresh_token || '');",
+                  "if (j.user && j.user.id) {",
+                  "  pm.collectionVariables.set('elmEmployeeId', j.user.id);",
+                  "} else if (j.access_token) {",
+                  "  try {",
+                  "    const payload = JSON.parse(atob(j.access_token.split('.')[1]));",
+                  "    if (payload.sub) pm.collectionVariables.set('elmEmployeeId', payload.sub);",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{elmEmployeeEmail}}\",\n  \"password\": \"{{elmEmployeePassword}}\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Verify Manager Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j && j.id) pm.collectionVariables.set('elmManagerId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmManagerToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/verify"
+          }
+        },
+        {
+          "name": "Verify Employee Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j && j.id) pm.collectionVariables.set('elmEmployeeId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/verify"
+          }
+        },
+        {
+          "name": "Refresh Employee Token",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rt = (pm.collectionVariables.get('elmEmployeeRefreshToken') || '').trim();",
+                  "if (!rt) throw new Error('elmEmployeeRefreshToken is empty. Run Login Employee first.');",
+                  "const parts = rt.split('.');",
+                  "if (parts.length !== 3) throw new Error('elmEmployeeRefreshToken is not a JWT. Run Login Employee again.');",
+                  "try {",
+                  "  const payload = JSON.parse(atob(parts[1]));",
+                  "  if (payload.type && payload.type !== 'refresh') throw new Error('Token in elmEmployeeRefreshToken is not a refresh token.');",
+                  "  if (payload.exp && Date.now() >= payload.exp * 1000) throw new Error('elmEmployeeRefreshToken is expired. Run Login Employee again.');",
+                  "} catch (e) {",
+                  "  throw new Error('Cannot parse elmEmployeeRefreshToken payload. Run Login Employee again.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.access_token) pm.collectionVariables.set('elmEmployeeToken', j.access_token);",
+                  "  if (j.refresh_token) pm.collectionVariables.set('elmEmployeeRefreshToken', j.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{elmEmployeeRefreshToken}}\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/refresh"
+          }
+        },
+        {
+          "name": "Logout Employee",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{elmEmployeeRefreshToken}}\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Employees",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const managerToken = (pm.collectionVariables.get('elmManagerToken') || '').trim();",
+              "const employeeToken = (pm.collectionVariables.get('elmEmployeeToken') || '').trim();",
+              "if (!managerToken || !employeeToken) {",
+              "  throw new Error('Run Login Manager and Login Employee first to populate auth tokens.');",
+              "}",
+              "const decode = (t) => JSON.parse(atob(t.split('.')[1]));",
+              "try {",
+              "  const m = decode(managerToken);",
+              "  const e = decode(employeeToken);",
+              "  if (m.exp && Date.now() >= m.exp * 1000) throw new Error('elmManagerToken expired. Run Login Manager again.');",
+              "  if (e.exp && Date.now() >= e.exp * 1000) throw new Error('elmEmployeeToken expired. Run Login Employee again.');",
+              "} catch (err) {",
+              "  if (err && err.message) throw err;",
+              "  throw new Error('Cannot decode auth tokens. Run login requests again.');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Create Manager Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmManagerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{elmManagerId}}\",\n  \"first_name\": \"Demo\",\n  \"last_name\": \"Manager\",\n  \"email\": \"{{elmManagerEmail}}\",\n  \"department\": \"Engineering\",\n  \"manager_id\": null,\n  \"hire_date\": \"2025-01-01\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/employees/"
+          }
+        },
+        {
+          "name": "Create Employee Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmManagerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{elmEmployeeId}}\",\n  \"first_name\": \"Demo\",\n  \"last_name\": \"Employee\",\n  \"email\": \"{{elmEmployeeEmail}}\",\n  \"department\": \"Engineering\",\n  \"manager_id\": \"{{elmManagerId}}\",\n  \"hire_date\": \"2025-01-10\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/employees/"
+          }
+        },
+        {
+          "name": "Get My Employee Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/employees/me"
+          }
+        },
+        {
+          "name": "Get Team Members",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmManagerToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/employees/team/members"
+          }
+        },
+        {
+          "name": "Get Employee By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/employees/{{elmEmployeeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Leave Balances",
+      "item": [
+        {
+          "name": "Get My Leave Balances",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-balances/me"
+          }
+        },
+        {
+          "name": "Get Leave Balances By Employee",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-balances/{{elmEmployeeId}}"
+          }
+        },
+        {
+          "name": "Get Leave Balance History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-balances/{{elmEmployeeId}}/history"
+          }
+        },
+        {
+          "name": "Validate Leave Balance",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmManagerToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-balances/{{elmEmployeeId}}/validate"
+          }
+        },
+        {
+          "name": "Allocate Leave Balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmManagerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employee_id\": \"{{elmEmployeeId}}\",\n  \"hire_date\": \"2025-01-10\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-balances/allocate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Leave Requests",
+      "item": [
+        {
+          "name": "Create Leave Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id) pm.collectionVariables.set('elmRequestId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leave_type_id\": 1,\n  \"start_date\": \"2026-07-15\",\n  \"end_date\": \"2026-07-17\",\n  \"reason\": \"Family trip\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/"
+          }
+        },
+        {
+          "name": "Get My Leave Requests (Pending)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/?status=pending"
+          }
+        },
+        {
+          "name": "Get Team Requests (Pending)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmManagerToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/team/requests?status=pending"
+          }
+        },
+        {
+          "name": "Get Team Calendar",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmManagerToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/team/calendar?start_date=2026-07-01&end_date=2026-07-31"
+          }
+        },
+        {
+          "name": "Approve Leave Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmManagerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Approved. Please hand over tasks before leave.\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/{{elmRequestId}}/approve"
+          }
+        },
+        {
+          "name": "Get Leave Request By ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/{{elmRequestId}}"
+          }
+        },
+        {
+          "name": "Create Leave Request (Rejection Flow)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id) pm.collectionVariables.set('elmRequestId2', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leave_type_id\": 1,\n  \"start_date\": \"2026-08-01\",\n  \"end_date\": \"2026-08-02\",\n  \"reason\": \"Personal work\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/"
+          }
+        },
+        {
+          "name": "Reject Leave Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elmManagerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Team bandwidth is low in this window.\"\n}"
+            },
+            "url": "{{elmApiBaseUrl}}/api/v1/leave-requests/{{elmRequestId2}}/reject"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Notifications",
+      "item": [
+        {
+          "name": "Get Employee Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmEmployeeToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/notifications/me?limit=20&offset=0"
+          }
+        },
+        {
+          "name": "Get Manager Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elmManagerToken}}" }],
+            "url": "{{elmApiBaseUrl}}/api/v1/notifications/me?limit=20&offset=0"
+          }
+        }
+      ]
+    }
+  ]
+}

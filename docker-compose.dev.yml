@@ -1,0 +1,91 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Auth Service - Development
+  auth-service:
+    build:
+      context: .
+      dockerfile: ./services/auth-service/Dockerfile
+      target: development
+    volumes:
+      - ./services/auth-service/src:/app/src:ro
+      - ./shared:/app/shared:ro
+    environment:
+      DEBUG: "True"
+      LOG_LEVEL: DEBUG
+      RELOAD: "True"
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+
+  # User Service - Development
+  user-service:
+    build:
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
+      target: development
+    volumes:
+      - ./services/user-service/src:/app/src:ro
+      - ./shared:/app/shared:ro
+    environment:
+      DEBUG: "True"
+      LOG_LEVEL: DEBUG
+      RELOAD: "True"
+      AUTH_SERVICE_URL: http://auth-service:8000
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+
+  # Leave Service - Development
+  leave-service:
+    build:
+      context: .
+      dockerfile: ./services/leave-service/Dockerfile
+      target: development
+    volumes:
+      - ./services/leave-service/src:/app/src:ro
+      - ./shared:/app/shared:ro
+    environment:
+      DEBUG: "True"
+      LOG_LEVEL: DEBUG
+      RELOAD: "True"
+      AUTH_SERVICE_URL: http://auth-service:8000
+      USER_SERVICE_URL: http://user-service:8001
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - "8002:8002"
+
+  # Notification Service - Development
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./services/notification-service/Dockerfile
+      target: development
+    volumes:
+      - ./services/notification-service/src:/app/src:ro
+      - ./shared:/app/shared:ro
+    environment:
+      DEBUG: "True"
+      LOG_LEVEL: DEBUG
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+
+  # PostgreSQL - Development
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres
+
+  # RabbitMQ - Development
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"

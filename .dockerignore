@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation & Specs
+specs/
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Environment Variables (use docker secrets instead)
+.env
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+tests/
+*.test
+
+# Logs
+*.log
+logs/
+
+# Database files (use volumes)
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Spec Kit
+.specify/
+
+# CI/CD
+.github/

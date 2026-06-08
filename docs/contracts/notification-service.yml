@@ -1,0 +1,192 @@
+openapi: 3.0.3
+info:
+  title: Notification Service API
+  description: Async notification delivery service (RabbitMQ consumer)
+  version: 1.0.0
+  contact:
+    name: Leave Management Team
+
+servers:
+  - url: http://localhost/api/v1/notifications
+    description: Development server (via NGINX)
+  - url: http://notification-service:8004/api/v1/notifications
+    description: Direct service access
+
+tags:
+  - name: Notifications
+    description: Notification query operations
+  - name: Health
+    description: Service health checks
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns service health status and RabbitMQ connection status
+      operationId: healthCheck
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /me:
+    get:
+      summary: Get my notifications
+      description: Returns notifications for authenticated user
+      operationId: getMyNotifications
+      tags:
+        - Notifications
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum number of notifications to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Number of notifications to skip (pagination)
+      responses:
+        '200':
+          description: Notifications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationResponse'
+                  total:
+                    type: integer
+                    example: 5
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    UnauthorizedError:
+      description: Unauthorized - Invalid or missing token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    NotificationResponse:
+      type: object
+      required:
+        - id
+        - notification_type
+        - subject
+        - body
+        - delivery_status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 880e8400-e29b-41d4-a716-446655440000
+        notification_type:
+          type: string
+          enum: [leave_submitted, leave_approved, leave_rejected]
+          example: leave_approved
+        subject:
+          type: string
+          example: Your leave request has been approved
+        body:
+          type: string
+          example: Your annual leave request from 2026-07-01 to 2026-07-05 has been approved.
+        delivery_status:
+          type: string
+          enum: [pending, delivered, failed]
+          example: delivered
+        delivery_method:
+          type: string
+          enum: [email, in-app]
+          example: email
+        delivered_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: 2026-06-02T15:31:00Z
+        created_at:
+          type: string
+          format: date-time
+          example: 2026-06-02T15:30:00Z
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [up, degraded, down]
+          example: up
+        service:
+          type: string
+          example: notification-service
+        version:
+          type: string
+          example: 1.0.0
+        timestamp:
+          type: string
+          format: date-time
+          example: 2026-06-03T10:00:00Z
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [up, down]
+              example: up
+            rabbitmq:
+              type: string
+              enum: [up, down]
+              example: up
+        uptime_seconds:
+          type: number
+          example: 3600.5
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: NOTIFICATION_NOT_FOUND
+        message:
+          type: string
+          example: Notification with specified ID does not exist
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
