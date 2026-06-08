@@ -2,6 +2,8 @@
 
 A comprehensive microservices-based backend system for managing employee leave requests, approvals, and balances. Built with FastAPI, PostgreSQL, RabbitMQ, and Docker.
 
+**Repository:** [github.com/raviyadavdevops/employee-leave-management](https://github.com/raviyadavdevops/employee-leave-management)
+
 ## 🏗️ Architecture Overview
 
 The system consists of 4 independent microservices orchestrated via Docker Compose:
